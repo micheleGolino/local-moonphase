@@ -285,9 +285,7 @@ button:active {
   position: relative;
   padding: 1.05rem;
   text-align: center;
-  transform: translateY(18px);
-  opacity: 0;
-  animation: riseIn 680ms ease-out forwards;
+  animation: riseIn 680ms ease-out both;
 }
 
 .phase-card:nth-child(2) {
