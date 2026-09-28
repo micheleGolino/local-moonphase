@@ -16,6 +16,22 @@ const moonPhaseData = document.getElementById("moonPhaseData");
 const earthPhaseName = document.getElementById("earthPhaseName");
 const earthPhaseData = document.getElementById("earthPhaseData");
 const summaryLine = document.getElementById("summaryLine");
+const statusBadge = document.getElementById("statusBadge");
+
+const moonAngleData = document.getElementById("moonAngleData");
+const earthAngleData = document.getElementById("earthAngleData");
+const moonMeter = document.getElementById("moonMeter");
+const earthMeter = document.getElementById("earthMeter");
+
+const moonCard = document.getElementById("moonCard");
+const earthCard = document.getElementById("earthCard");
+
+const moonOrbitRing = document.querySelector(".orbit-moon .orbit-ring");
+const earthOrbitRing = document.querySelector(".orbit-earth .orbit-ring");
+
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let currentMoonAngle = null;
 
 function toIsoDate(date) {
   const year = date.getFullYear();
@@ -36,6 +52,22 @@ function normalizeAngle(angleDegrees) {
 function getIlluminationFraction(phaseAngleDegrees) {
   const phaseRadians = (phaseAngleDegrees * Math.PI) / 180;
   return (1 - Math.cos(phaseRadians)) / 2;
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function shortestAngleDelta(from, to) {
+  let delta = (to - from + 540) % 360 - 180;
+  if (delta === -180) {
+    delta = 180;
+  }
+  return delta;
 }
 
 function getPhaseLabel(angleDegrees, subject) {
@@ -149,14 +181,66 @@ function drawPhaseDisk(canvas, phaseAngleDegrees, options) {
   ctx.fill();
 }
 
-function renderForDate(date) {
-  const moonPhaseAngle = normalizeAngle(Astronomy.MoonPhase(date));
-  const earthPhaseAngle = normalizeAngle(moonPhaseAngle + 180);
+function animatePhaseTransition(targetMoonAngle, targetDate) {
+  if (currentMoonAngle === null || prefersReducedMotion) {
+    currentMoonAngle = targetMoonAngle;
+    updateVisualState(currentMoonAngle, targetDate);
+    return;
+  }
 
-  const moonIllumination = getIlluminationFraction(moonPhaseAngle);
+  const start = currentMoonAngle;
+  const delta = shortestAngleDelta(start, targetMoonAngle);
+  const duration = 640;
+  const startTime = performance.now();
+
+  function step(now) {
+    const progress = Math.min(1, (now - startTime) / duration);
+    const eased = easeOutCubic(progress);
+    const frameAngle = normalizeAngle(start + delta * eased);
+
+    updateVisualState(frameAngle, targetDate);
+
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      currentMoonAngle = targetMoonAngle;
+      statusBadge.textContent = "Allineamento completato";
+    }
+  }
+
+  statusBadge.textContent = "Sincronizzazione delle fasi";
+  requestAnimationFrame(step);
+}
+
+function pulseCards() {
+  moonCard.classList.remove("flash");
+  earthCard.classList.remove("flash");
+
+  void moonCard.offsetWidth;
+
+  moonCard.classList.add("flash");
+  earthCard.classList.add("flash");
+}
+
+function updateMetersAndOrbit(moonAngle, earthAngle, moonIllumination, earthIllumination) {
+  moonMeter.style.width = `${(moonIllumination * 100).toFixed(2)}%`;
+  earthMeter.style.width = `${(earthIllumination * 100).toFixed(2)}%`;
+
+  moonOrbitRing.style.setProperty("--orbit-angle", `${moonAngle.toFixed(2)}deg`);
+  earthOrbitRing.style.setProperty("--orbit-angle", `${earthAngle.toFixed(2)}deg`);
+
+  moonAngleData.textContent = `${moonAngle.toFixed(1)}°`;
+  earthAngleData.textContent = `${earthAngle.toFixed(1)}°`;
+}
+
+function updateVisualState(moonPhaseAngle, date) {
+  const moonAngle = normalizeAngle(moonPhaseAngle);
+  const earthPhaseAngle = normalizeAngle(moonAngle + 180);
+
+  const moonIllumination = getIlluminationFraction(moonAngle);
   const earthIllumination = getIlluminationFraction(earthPhaseAngle);
 
-  drawPhaseDisk(moonCanvas, moonPhaseAngle, {
+  drawPhaseDisk(moonCanvas, moonAngle, {
     brightColor: "#efe7cc",
     darkColor: "#1b1e29",
     glowColor: "rgba(255, 241, 190, 0.28)",
@@ -170,17 +254,25 @@ function renderForDate(date) {
     invert: true
   });
 
-  moonPhaseName.textContent = getPhaseLabel(moonPhaseAngle, "moon");
-  moonPhaseData.textContent = `Illuminazione: ${(moonIllumination * 100).toFixed(1)}% • Età lunare: ${((moonPhaseAngle / 360) * SYNODIC_MONTH_DAYS).toFixed(1)} giorni`;
+  moonPhaseName.textContent = getPhaseLabel(moonAngle, "moon");
+  moonPhaseData.textContent = `Illuminazione: ${(moonIllumination * 100).toFixed(1)}% • Età lunare: ${((moonAngle / 360) * SYNODIC_MONTH_DAYS).toFixed(1)} giorni`;
 
   earthPhaseName.textContent = getPhaseLabel(earthPhaseAngle, "earth");
   earthPhaseData.textContent = `Illuminazione: ${(earthIllumination * 100).toFixed(1)}% • Angolo fase: ${earthPhaseAngle.toFixed(1)}°`;
+
+  updateMetersAndOrbit(moonAngle, earthPhaseAngle, moonIllumination, earthIllumination);
 
   summaryLine.textContent = `Data selezionata: ${date.toLocaleDateString("it-IT", {
     day: "2-digit",
     month: "long",
     year: "numeric"
   })}. Le fasi sono calcolate localmente con Astronomy Engine.`;
+}
+
+function renderForDate(date) {
+  const moonPhaseAngle = normalizeAngle(Astronomy.MoonPhase(date));
+  animatePhaseTransition(moonPhaseAngle, date);
+  pulseCards();
 }
 
 function shiftCurrentDate(days) {
@@ -193,7 +285,9 @@ function shiftCurrentDate(days) {
 function initialize() {
   const today = new Date();
   datePicker.value = toIsoDate(today);
-  renderForDate(parseDateFromPicker(datePicker.value));
+  currentMoonAngle = normalizeAngle(Astronomy.MoonPhase(parseDateFromPicker(datePicker.value)));
+  updateVisualState(currentMoonAngle, parseDateFromPicker(datePicker.value));
+  statusBadge.textContent = "Pronto per la regolazione";
 
   datePicker.addEventListener("change", () => {
     renderForDate(parseDateFromPicker(datePicker.value));

@@ -13,6 +13,16 @@
   </head>
   <body>
     <div class="app-bg"></div>
+    <div class="starfield" aria-hidden="true">
+      <span class="star s1"></span>
+      <span class="star s2"></span>
+      <span class="star s3"></span>
+      <span class="star s4"></span>
+      <span class="star s5"></span>
+      <span class="star s6"></span>
+      <span class="star s7"></span>
+      <span class="star s8"></span>
+    </div>
     <main class="app-shell">
       <header class="hero">
         <p class="eyebrow">Mission to Moonphase • Local Tool</p>
@@ -21,6 +31,10 @@
           Strumento personale per impostare il tuo MoonSwatch: scegli una data e confronta fase lunare ed
           Earth Phase in tempo reale.
         </p>
+        <div class="hero-meta">
+          <p id="statusBadge" class="status-badge" aria-live="polite">Allineamento in corso</p>
+          <p class="hero-hint">Transizioni cinematiche quando cambi giorno, con calcolo locale istantaneo.</p>
+        </div>
       </header>
 
       <section class="control-panel" aria-label="Controlli data">
@@ -33,19 +47,42 @@
         </div>
       </section>
 
+      <section class="phase-hud" aria-label="Indicatori orbitali">
+        <div class="orbit orbit-moon">
+          <span class="orbit-label">Longitudine Luna</span>
+          <div class="orbit-ring" style="--orbit-angle: 0deg">
+            <span class="orbit-marker"></span>
+          </div>
+          <p id="moonAngleData" class="orbit-data">0.0°</p>
+        </div>
+        <div class="orbit orbit-earth">
+          <span class="orbit-label">Longitudine Terra</span>
+          <div class="orbit-ring" style="--orbit-angle: 180deg">
+            <span class="orbit-marker"></span>
+          </div>
+          <p id="earthAngleData" class="orbit-data">180.0°</p>
+        </div>
+      </section>
+
       <section class="phase-grid" aria-live="polite">
-        <article class="phase-card">
+        <article class="phase-card" id="moonCard">
           <h2>Luna vista dalla Terra</h2>
           <canvas id="moonCanvas" width="280" height="280" aria-label="Visualizzazione fase lunare"></canvas>
           <p class="phase-name" id="moonPhaseName"></p>
           <p class="phase-data" id="moonPhaseData"></p>
+          <div class="meter" aria-hidden="true">
+            <span id="moonMeter"></span>
+          </div>
         </article>
 
-        <article class="phase-card">
+        <article class="phase-card" id="earthCard">
           <h2>Terra vista dalla Luna</h2>
           <canvas id="earthCanvas" width="280" height="280" aria-label="Visualizzazione fase terrestre"></canvas>
           <p class="phase-name" id="earthPhaseName"></p>
           <p class="phase-data" id="earthPhaseData"></p>
+          <div class="meter" aria-hidden="true">
+            <span id="earthMeter"></span>
+          </div>
         </article>
       </section>
 
