@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Moonphase</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="app-bg"></div>
+    <main class="app-shell">
+      <header class="hero">
+        <p class="eyebrow">Mission to Moonphase • Local Tool</p>
+        <h1>Fasi Lunari e Terrestri</h1>
+        <p class="subtitle">
+          Strumento personale per impostare il tuo MoonSwatch: scegli una data e confronta fase lunare ed
+          Earth Phase in tempo reale.
+        </p>
+      </header>
+
+      <section class="control-panel" aria-label="Controlli data">
+        <label for="datePicker">Data di riferimento</label>
+        <div class="date-row">
+          <button id="prevDay" class="ghost-btn" type="button">-1 giorno</button>
+          <input id="datePicker" type="date" />
+          <button id="nextDay" class="ghost-btn" type="button">+1 giorno</button>
+          <button id="todayBtn" class="solid-btn" type="button">Oggi</button>
+        </div>
+      </section>
+
+      <section class="phase-grid" aria-live="polite">
+        <article class="phase-card">
+          <h2>Luna vista dalla Terra</h2>
+          <canvas id="moonCanvas" width="280" height="280" aria-label="Visualizzazione fase lunare"></canvas>
+          <p class="phase-name" id="moonPhaseName"></p>
+          <p class="phase-data" id="moonPhaseData"></p>
+        </article>
+
+        <article class="phase-card">
+          <h2>Terra vista dalla Luna</h2>
+          <canvas id="earthCanvas" width="280" height="280" aria-label="Visualizzazione fase terrestre"></canvas>
+          <p class="phase-name" id="earthPhaseName"></p>
+          <p class="phase-data" id="earthPhaseData"></p>
+        </article>
+      </section>
+
+      <section class="info-strip">
+        <p id="summaryLine"></p>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

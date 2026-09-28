@@ -1,0 +1,21 @@
+{
+  "name": "local-moonphase",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "micheleGolino",
+  "license": "MIT",
+  "description": "Local Moon and Earth phase visualizer for MoonSwatch setup",
+  "dependencies": {
+    "astronomy-engine": "^2.1.19"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1"
+  }
+}
