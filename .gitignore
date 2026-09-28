@@ -2,3 +2,5 @@ node_modules/
 dist/
 .vscode/
 *.log
+_swatch_ref/
+ui-ux-pro-max/

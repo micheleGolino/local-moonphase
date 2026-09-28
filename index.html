@@ -6,88 +6,135 @@
     <title>Local Moonphase</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://images.ctfassets.net" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
-    <div class="app-bg"></div>
-    <div class="starfield" aria-hidden="true">
-      <span class="star s1"></span>
-      <span class="star s2"></span>
-      <span class="star s3"></span>
-      <span class="star s4"></span>
-      <span class="star s5"></span>
-      <span class="star s6"></span>
-      <span class="star s7"></span>
-      <span class="star s8"></span>
-    </div>
-    <main class="app-shell">
-      <header class="hero">
-        <p class="eyebrow">Mission to Moonphase • Local Tool</p>
-        <h1>Fasi Lunari e Terrestri</h1>
-        <p class="subtitle">
-          Strumento personale per impostare il tuo MoonSwatch: scegli una data e confronta fase lunare ed
-          Earth Phase in tempo reale.
-        </p>
-        <div class="hero-meta">
-          <p id="statusBadge" class="status-badge" aria-live="polite">Allineamento in corso</p>
-          <p class="hero-hint">Transizioni cinematiche quando cambi giorno, con calcolo locale istantaneo.</p>
-        </div>
+    <main class="page">
+      <header class="topbar">
+        <p class="brand">Mission to Moonphase — Local</p>
+        <h1 class="visually-hidden">Fasi lunari e terrestri</h1>
       </header>
 
-      <section class="control-panel" aria-label="Controlli data">
-        <label for="datePicker">Data di riferimento</label>
-        <div class="date-row">
-          <button id="prevDay" class="ghost-btn" type="button">-1 giorno</button>
-          <input id="datePicker" type="date" />
-          <button id="nextDay" class="ghost-btn" type="button">+1 giorno</button>
-          <button id="todayBtn" class="solid-btn" type="button">Oggi</button>
+      <section class="viewer" aria-label="Visualizzazione fasi">
+        <div class="card" data-testid="card">
+          <img
+            class="frame-bg"
+            id="frameBg"
+            src="https://images.ctfassets.net/pgd78tzdxkn4/39sBDwDfXBerXeNt6FjrBb/0b36994da50034c35a2f79a550745f28/background_v2.png?w=1280&q=90&fm=webp"
+            alt="Superficie lunare"
+            decoding="async"
+          />
+
+          <div class="card-head">
+            <p class="date-label" id="dateLabel" aria-live="polite">—</p>
+            <p class="countdown" id="countdown">—</p>
+          </div>
+
+          <button
+            class="theme-switch"
+            id="themeSwitch"
+            type="button"
+            role="switch"
+            aria-checked="false"
+            aria-label="Alterna tema giorno e notte"
+          >
+            <span class="knob">
+              <svg viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="25" cy="25" r="25" transform="matrix(1 0 0 -1 0 50)" fill="white" />
+                <path
+                  d="M32 26.6c.9-3.9-1.5-7.7-5.3-8.7-3.9-.9-7.8 1.5-8.7 5.4-.9 3.9 1.5 7.7 5.3 8.6 3.9.9 7.8-1.5 8.7-5.3Z"
+                  fill="black"
+                />
+                <path
+                  d="M25 15.8c-.5 0-.9-.4-.9-.9v-4c0-.5.4-.9.9-.9s.9.4.9.9v4c0 .5-.4.9-.9.9ZM25 40c-.5 0-.9-.4-.9-.9v-4c0-.5.4-.9.9-.9s.9.4.9.9v4c0 .5-.4.9-.9.9ZM39.1 25.9h-4c-.5 0-.9-.4-.9-.9s.4-.9.9-.9h4c.5 0 .9.4.9.9s-.4.9-.9.9ZM10.9 25.9h4c.5 0 .9-.4.9-.9s-.4-.9-.9-.9h-4c-.5 0-.9.4-.9.9s.4.9.9.9ZM17.8 18.7c-.2 0-.5-.1-.6-.3l-2.8-2.8c-.4-.4-.4-.9 0-1.3.4-.4.9-.4 1.3 0l2.8 2.8c.4.4.4.9 0 1.3-.2.2-.4.3-.7.3ZM35 35.9c-.2 0-.5-.1-.6-.3l-2.8-2.8c-.4-.4-.4-.9 0-1.3.4-.4.9-.4 1.3 0l2.8 2.8c.4.4.4.9 0 1.3-.2.2-.4.3-.7.3ZM15 35.9c-.2 0-.5-.1-.6-.3-.4-.4-.4-.9 0-1.3l2.8-2.8c.4-.4.9-.4 1.3 0 .4.4.4.9 0 1.3l-2.8 2.8c-.2.2-.4.3-.7.3ZM32.2 18.7c-.2 0-.5-.1-.6-.3-.4-.4-.4-.9 0-1.3l2.8-2.8c.4-.4.9-.4 1.3 0 .4.4.4.9 0 1.3l-2.8 2.8c-.2.2-.4.3-.7.3Z"
+                  fill="black"
+                />
+              </svg>
+            </span>
+          </button>
+
+          <button class="nav prev" id="prevDate" type="button" title="Giorno precedente" aria-label="Giorno precedente">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                fill-rule="evenodd"
+                d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
+          <button class="nav next" id="nextDate" type="button" title="Giorno successivo" aria-label="Giorno successivo">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                fill-rule="evenodd"
+                d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
+
+          <div class="earth-disc-wrap">
+            <canvas class="earth-canvas" id="earthCanvas" width="620" height="620"></canvas>
+          </div>
+
+          <div class="moon-disc-wrap">
+            <canvas class="moon-canvas" id="moonCanvas" width="320" height="320"></canvas>
+          </div>
+
+          <img
+            class="tex-src"
+            id="earthTex"
+            src="https://images.ctfassets.net/pgd78tzdxkn4/1VZrsOsjzD4PYbJGy1lHsT/a6b987b0aaf0b690ab9c604c4554e8ac/america_earth_disc.png?w=1024&q=90&fm=png"
+            alt=""
+            aria-hidden="true"
+            crossorigin="anonymous"
+          />
+          <img
+            class="tex-src"
+            id="moonTex"
+            src="https://images.ctfassets.net/pgd78tzdxkn4/2bzNvyeYN0Eq6Ts9UBw5Zw/37af2bcd8dc40a694198b45b5a3959fa/moon_disc__1_.png?w=1024&q=90&fm=png"
+            alt=""
+            aria-hidden="true"
+            crossorigin="anonymous"
+          />
         </div>
       </section>
 
-      <section class="phase-hud" aria-label="Indicatori orbitali">
-        <div class="orbit orbit-moon">
-          <span class="orbit-label">Longitudine Luna</span>
-          <div class="orbit-ring" style="--orbit-angle: 0deg">
-            <span class="orbit-marker"></span>
+      <section class="controls" aria-label="Controlli data">
+        <div class="control-row">
+          <label for="datePicker">Data di riferimento</label>
+          <div class="control-inputs">
+            <input id="datePicker" type="date" />
+            <button id="todayBtn" class="solid-btn" type="button">Oggi</button>
           </div>
-          <p id="moonAngleData" class="orbit-data">0.0°</p>
         </div>
-        <div class="orbit orbit-earth">
-          <span class="orbit-label">Longitudine Terra</span>
-          <div class="orbit-ring" style="--orbit-angle: 180deg">
-            <span class="orbit-marker"></span>
-          </div>
-          <p id="earthAngleData" class="orbit-data">180.0°</p>
-        </div>
-      </section>
 
-      <section class="phase-grid" aria-live="polite">
-        <article class="phase-card" id="moonCard">
-          <h2>Luna vista dalla Terra</h2>
-          <canvas id="moonCanvas" width="280" height="280" aria-label="Visualizzazione fase lunare"></canvas>
-          <p class="phase-name" id="moonPhaseName"></p>
-          <p class="phase-data" id="moonPhaseData"></p>
-          <div class="meter" aria-hidden="true">
-            <span id="moonMeter"></span>
+        <dl class="data-grid" aria-live="polite">
+          <div class="data-item">
+            <dt>Fase lunare</dt>
+            <dd id="moonPhaseName">—</dd>
           </div>
-        </article>
-
-        <article class="phase-card" id="earthCard">
-          <h2>Terra vista dalla Luna</h2>
-          <canvas id="earthCanvas" width="280" height="280" aria-label="Visualizzazione fase terrestre"></canvas>
-          <p class="phase-name" id="earthPhaseName"></p>
-          <p class="phase-data" id="earthPhaseData"></p>
-          <div class="meter" aria-hidden="true">
-            <span id="earthMeter"></span>
+          <div class="data-item">
+            <dt>Illuminazione Luna</dt>
+            <dd id="moonIllum">—</dd>
           </div>
-        </article>
-      </section>
+          <div class="data-item">
+            <dt>Fase terrestre</dt>
+            <dd id="earthPhaseName">—</dd>
+          </div>
+          <div class="data-item">
+            <dt>Illuminazione Terra</dt>
+            <dd id="earthIllum">—</dd>
+          </div>
+        </dl>
 
-      <section class="info-strip">
-        <p id="summaryLine"></p>
+        <p class="disclaimer">
+          Fasi calcolate localmente con Astronomy Engine. Progetto personale, non affiliato con Swatch/Omega; gli
+          asset grafici sono serviti dal CDN Swatch a solo scopo dimostrativo.
+        </p>
       </section>
     </main>
 

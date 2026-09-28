@@ -3,35 +3,33 @@ import "./styles.css";
 
 const SYNODIC_MONTH_DAYS = 29.530588853;
 
-const moonCanvas = document.getElementById("moonCanvas");
-const earthCanvas = document.getElementById("earthCanvas");
+// Where the clean full-disc lives inside each Swatch texture (fractions of image size).
+const EARTH_TEX = { cx: 0.38, cy: 0.44, r: 0.19 };
+const MOON_TEX = { cx: 0.5, cy: 0.22, r: 0.17 };
 
+const dateLabel = document.getElementById("dateLabel");
+const countdown = document.getElementById("countdown");
 const datePicker = document.getElementById("datePicker");
-const prevDayButton = document.getElementById("prevDay");
-const nextDayButton = document.getElementById("nextDay");
-const todayButton = document.getElementById("todayBtn");
+const todayBtn = document.getElementById("todayBtn");
+const prevDate = document.getElementById("prevDate");
+const nextDate = document.getElementById("nextDate");
+const themeSwitch = document.getElementById("themeSwitch");
+
+const card = document.querySelector(".card");
+const earthCanvas = document.getElementById("earthCanvas");
+const moonCanvas = document.getElementById("moonCanvas");
+const earthTex = document.getElementById("earthTex");
+const moonTex = document.getElementById("moonTex");
 
 const moonPhaseName = document.getElementById("moonPhaseName");
-const moonPhaseData = document.getElementById("moonPhaseData");
+const moonIllum = document.getElementById("moonIllum");
 const earthPhaseName = document.getElementById("earthPhaseName");
-const earthPhaseData = document.getElementById("earthPhaseData");
-const summaryLine = document.getElementById("summaryLine");
-const statusBadge = document.getElementById("statusBadge");
-
-const moonAngleData = document.getElementById("moonAngleData");
-const earthAngleData = document.getElementById("earthAngleData");
-const moonMeter = document.getElementById("moonMeter");
-const earthMeter = document.getElementById("earthMeter");
-
-const moonCard = document.getElementById("moonCard");
-const earthCard = document.getElementById("earthCard");
-
-const moonOrbitRing = document.querySelector(".orbit-moon .orbit-ring");
-const earthOrbitRing = document.querySelector(".orbit-earth .orbit-ring");
+const earthIllum = document.getElementById("earthIllum");
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-let currentMoonAngle = null;
+let currentMoonPhase = null;
+let animationFrame = null;
 
 function toIsoDate(date) {
   const year = date.getFullYear();
@@ -49,25 +47,17 @@ function normalizeAngle(angleDegrees) {
   return ((angleDegrees % 360) + 360) % 360;
 }
 
+function shortestAngleDelta(from, to) {
+  return ((to - from + 540) % 360) - 180;
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 function getIlluminationFraction(phaseAngleDegrees) {
   const phaseRadians = (phaseAngleDegrees * Math.PI) / 180;
   return (1 - Math.cos(phaseRadians)) / 2;
-}
-
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
-function easeOutCubic(t) {
-  return 1 - Math.pow(1 - t, 3);
-}
-
-function shortestAngleDelta(from, to) {
-  let delta = (to - from + 540) % 360 - 180;
-  if (delta === -180) {
-    delta = 180;
-  }
-  return delta;
 }
 
 function getPhaseLabel(angleDegrees, subject) {
@@ -97,209 +87,217 @@ function getPhaseLabel(angleDegrees, subject) {
   return subject === "earth" ? labelsEarth[band] : labelsMoon[band];
 }
 
-function drawPhaseDisk(canvas, phaseAngleDegrees, options) {
-  const ctx = canvas.getContext("2d");
-  const { brightColor, darkColor, glowColor, invert } = options;
+// "Earth new" (from the Moon) happens at Full Moon = phase 180.
+function daysToNextEarthNew(date) {
+  const next = Astronomy.SearchMoonPhase(180, date, 40);
+  if (!next) {
+    return null;
+  }
+  const diffDays = (next.date.getTime() - date.getTime()) / 86400000;
+  return Math.max(0, Math.round(diffDays));
+}
 
+function formatCountdown(days) {
+  if (days === null) {
+    return "Prossima Terra nuova";
+  }
+  if (days === 0) {
+    return "Oggi è Terra nuova";
+  }
+  if (days === 1) {
+    return "1 giorno alla Terra nuova";
+  }
+  return `${days} giorni alla Terra nuova`;
+}
+
+// Draws a spherical body: photographic texture from the Swatch image, then a
+// dark shadow following the real terminator for the given phase angle
+// (0 = new/dark, 180 = full/lit).
+function drawBody(canvas, texImage, tex, phaseAngleDegrees) {
+  const ctx = canvas.getContext("2d");
   const width = canvas.width;
   const height = canvas.height;
-  const radius = Math.min(width, height) * 0.43;
+  const radius = Math.min(width, height) * 0.47;
   const cx = width / 2;
   const cy = height / 2;
 
   ctx.clearRect(0, 0, width, height);
-
-  const phaseRadians = (normalizeAngle(phaseAngleDegrees) * Math.PI) / 180;
-  const cosPhase = Math.cos(phaseRadians);
-  const waxing = normalizeAngle(phaseAngleDegrees) < 180;
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.closePath();
-
-  const shadowGradient = ctx.createRadialGradient(cx - radius * 0.35, cy - radius * 0.45, radius * 0.15, cx, cy, radius * 1.2);
-  shadowGradient.addColorStop(0, glowColor);
-  shadowGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-  ctx.fillStyle = shadowGradient;
-  ctx.fillRect(0, 0, width, height);
-
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.clip();
 
-  ctx.fillStyle = darkColor;
-  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  if (texImage && texImage.complete && texImage.naturalWidth > 0) {
+    const srcR = tex.r * texImage.naturalWidth;
+    const srcX = tex.cx * texImage.naturalWidth - srcR;
+    const srcY = tex.cy * texImage.naturalHeight - srcR;
+    ctx.drawImage(texImage, srcX, srcY, srcR * 2, srcR * 2, cx - radius, cy - radius, radius * 2, radius * 2);
+  } else {
+    ctx.fillStyle = "#5c6b78";
+    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  }
 
-  ctx.fillStyle = brightColor;
+  const norm = normalizeAngle(phaseAngleDegrees);
+  const phase = (norm * Math.PI) / 180;
+  const cosP = Math.cos(phase);
+  const waxing = norm < 180;
 
+  ctx.fillStyle = "rgba(3, 5, 9, 0.95)";
   const step = 1;
   for (let y = -radius; y <= radius; y += step) {
-    const xMax = Math.sqrt(radius * radius - y * y);
-    const boundary = cosPhase * xMax;
+    const xMax = Math.sqrt(Math.max(0, radius * radius - y * y));
 
-    let xStart;
-    let xEnd;
-
-    if (invert) {
-      if (waxing) {
-        xStart = -xMax;
-        xEnd = boundary;
-      } else {
-        xStart = -boundary;
-        xEnd = xMax;
-      }
+    let litStart;
+    let litEnd;
+    if (waxing) {
+      litStart = cosP * xMax;
+      litEnd = xMax;
     } else {
-      if (waxing) {
-        xStart = boundary;
-        xEnd = xMax;
-      } else {
-        xStart = -xMax;
-        xEnd = -boundary;
-      }
+      litStart = -xMax;
+      litEnd = -cosP * xMax;
     }
 
-    ctx.fillRect(cx + xStart, cy + y, Math.max(0, xEnd - xStart), step + 0.4);
+    if (litStart > -xMax) {
+      ctx.fillRect(cx - xMax, cy + y, litStart + xMax, step + 0.6);
+    }
+    if (litEnd < xMax) {
+      ctx.fillRect(cx + litEnd, cy + y, xMax - litEnd, step + 0.6);
+    }
   }
+
+  // Soft terminator shading for a rounder look.
+  const shade = ctx.createLinearGradient(cx - radius, 0, cx + radius, 0);
+  shade.addColorStop(0, "rgba(0,0,0,0.26)");
+  shade.addColorStop(0.5, "rgba(0,0,0,0)");
+  shade.addColorStop(1, "rgba(0,0,0,0.26)");
+  ctx.fillStyle = shade;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
 
   ctx.restore();
 
-  const edge = ctx.createRadialGradient(cx - radius * 0.5, cy - radius * 0.5, radius * 0.2, cx, cy, radius);
-  edge.addColorStop(0, "rgba(255, 255, 255, 0.2)");
-  edge.addColorStop(1, "rgba(0, 0, 0, 0.36)");
-
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+  // Rim light.
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+  ctx.lineWidth = Math.max(1, radius * 0.02);
   ctx.stroke();
-
-  ctx.fillStyle = edge;
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fill();
 }
 
-function animatePhaseTransition(targetMoonAngle, targetDate) {
-  if (currentMoonAngle === null || prefersReducedMotion) {
-    currentMoonAngle = targetMoonAngle;
-    updateVisualState(currentMoonAngle, targetDate);
+function renderPhase(moonPhaseAngle) {
+  const moonAngle = normalizeAngle(moonPhaseAngle);
+  const earthAngle = normalizeAngle(moonAngle + 180);
+  drawBody(moonCanvas, moonTex, MOON_TEX, moonAngle);
+  drawBody(earthCanvas, earthTex, EARTH_TEX, earthAngle);
+}
+
+function updateReadout(date, moonPhaseAngle) {
+  const moonAngle = normalizeAngle(moonPhaseAngle);
+  const earthAngle = normalizeAngle(moonAngle + 180);
+
+  dateLabel.textContent = date.toLocaleDateString("it-IT", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+  countdown.textContent = formatCountdown(daysToNextEarthNew(date));
+
+  moonPhaseName.textContent = getPhaseLabel(moonAngle, "moon");
+  moonIllum.textContent = `${(getIlluminationFraction(moonAngle) * 100).toFixed(0)}% • ${(
+    (moonAngle / 360) *
+    SYNODIC_MONTH_DAYS
+  ).toFixed(1)} giorni`;
+
+  earthPhaseName.textContent = getPhaseLabel(earthAngle, "earth");
+  earthIllum.textContent = `${(getIlluminationFraction(earthAngle) * 100).toFixed(0)}%`;
+}
+
+function animateTo(targetMoonPhase) {
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+    animationFrame = null;
+  }
+
+  if (currentMoonPhase === null || prefersReducedMotion) {
+    currentMoonPhase = targetMoonPhase;
+    renderPhase(currentMoonPhase);
     return;
   }
 
-  const start = currentMoonAngle;
-  const delta = shortestAngleDelta(start, targetMoonAngle);
-  const duration = 640;
+  const start = currentMoonPhase;
+  const delta = shortestAngleDelta(normalizeAngle(start), normalizeAngle(targetMoonPhase));
+  const duration = 780;
   const startTime = performance.now();
 
   function step(now) {
     const progress = Math.min(1, (now - startTime) / duration);
-    const eased = easeOutCubic(progress);
-    const frameAngle = normalizeAngle(start + delta * eased);
-
-    updateVisualState(frameAngle, targetDate);
-
+    const eased = easeInOutCubic(progress);
+    renderPhase(start + delta * eased);
     if (progress < 1) {
-      requestAnimationFrame(step);
+      animationFrame = requestAnimationFrame(step);
     } else {
-      currentMoonAngle = targetMoonAngle;
-      statusBadge.textContent = "Allineamento completato";
+      currentMoonPhase = normalizeAngle(targetMoonPhase);
+      animationFrame = null;
     }
   }
 
-  statusBadge.textContent = "Sincronizzazione delle fasi";
-  requestAnimationFrame(step);
+  animationFrame = requestAnimationFrame(step);
 }
 
-function pulseCards() {
-  moonCard.classList.remove("flash");
-  earthCard.classList.remove("flash");
-
-  void moonCard.offsetWidth;
-
-  moonCard.classList.add("flash");
-  earthCard.classList.add("flash");
+function pulseCard() {
+  if (prefersReducedMotion) {
+    return;
+  }
+  card.classList.remove("pulse");
+  void card.offsetWidth;
+  card.classList.add("pulse");
 }
 
-function updateMetersAndOrbit(moonAngle, earthAngle, moonIllumination, earthIllumination) {
-  moonMeter.style.width = `${(moonIllumination * 100).toFixed(2)}%`;
-  earthMeter.style.width = `${(earthIllumination * 100).toFixed(2)}%`;
-
-  moonOrbitRing.style.setProperty("--orbit-angle", `${moonAngle.toFixed(2)}deg`);
-  earthOrbitRing.style.setProperty("--orbit-angle", `${earthAngle.toFixed(2)}deg`);
-
-  moonAngleData.textContent = `${moonAngle.toFixed(1)}°`;
-  earthAngleData.textContent = `${earthAngle.toFixed(1)}°`;
-}
-
-function updateVisualState(moonPhaseAngle, date) {
-  const moonAngle = normalizeAngle(moonPhaseAngle);
-  const earthPhaseAngle = normalizeAngle(moonAngle + 180);
-
-  const moonIllumination = getIlluminationFraction(moonAngle);
-  const earthIllumination = getIlluminationFraction(earthPhaseAngle);
-
-  drawPhaseDisk(moonCanvas, moonAngle, {
-    brightColor: "#efe7cc",
-    darkColor: "#1b1e29",
-    glowColor: "rgba(255, 241, 190, 0.28)",
-    invert: false
-  });
-
-  drawPhaseDisk(earthCanvas, earthPhaseAngle, {
-    brightColor: "#85b4d8",
-    darkColor: "#12273d",
-    glowColor: "rgba(129, 197, 255, 0.25)",
-    invert: true
-  });
-
-  moonPhaseName.textContent = getPhaseLabel(moonAngle, "moon");
-  moonPhaseData.textContent = `Illuminazione: ${(moonIllumination * 100).toFixed(1)}% • Età lunare: ${((moonAngle / 360) * SYNODIC_MONTH_DAYS).toFixed(1)} giorni`;
-
-  earthPhaseName.textContent = getPhaseLabel(earthPhaseAngle, "earth");
-  earthPhaseData.textContent = `Illuminazione: ${(earthIllumination * 100).toFixed(1)}% • Angolo fase: ${earthPhaseAngle.toFixed(1)}°`;
-
-  updateMetersAndOrbit(moonAngle, earthPhaseAngle, moonIllumination, earthIllumination);
-
-  summaryLine.textContent = `Data selezionata: ${date.toLocaleDateString("it-IT", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric"
-  })}. Le fasi sono calcolate localmente con Astronomy Engine.`;
-}
-
-function renderForDate(date) {
+function updateView(date, animate) {
   const moonPhaseAngle = normalizeAngle(Astronomy.MoonPhase(date));
-  animatePhaseTransition(moonPhaseAngle, date);
-  pulseCards();
+  updateReadout(date, moonPhaseAngle);
+  if (animate) {
+    animateTo(moonPhaseAngle);
+    pulseCard();
+  } else {
+    currentMoonPhase = moonPhaseAngle;
+    renderPhase(moonPhaseAngle);
+  }
 }
 
-function shiftCurrentDate(days) {
-  const selectedDate = parseDateFromPicker(datePicker.value);
-  selectedDate.setDate(selectedDate.getDate() + days);
-  datePicker.value = toIsoDate(selectedDate);
-  renderForDate(selectedDate);
+function refresh(animate) {
+  updateView(parseDateFromPicker(datePicker.value), animate);
+}
+
+function shiftDay(days) {
+  const selected = parseDateFromPicker(datePicker.value);
+  selected.setDate(selected.getDate() + days);
+  datePicker.value = toIsoDate(selected);
+  refresh(true);
 }
 
 function initialize() {
-  const today = new Date();
-  datePicker.value = toIsoDate(today);
-  currentMoonAngle = normalizeAngle(Astronomy.MoonPhase(parseDateFromPicker(datePicker.value)));
-  updateVisualState(currentMoonAngle, parseDateFromPicker(datePicker.value));
-  statusBadge.textContent = "Pronto per la regolazione";
+  datePicker.value = toIsoDate(new Date());
+  refresh(false);
 
-  datePicker.addEventListener("change", () => {
-    renderForDate(parseDateFromPicker(datePicker.value));
+  // Redraw once textures finish loading so the first paint shows the photo.
+  [earthTex, moonTex].forEach((img) => {
+    if (!img.complete) {
+      img.addEventListener("load", () => renderPhase(currentMoonPhase ?? 0), { once: true });
+    }
   });
 
-  prevDayButton.addEventListener("click", () => shiftCurrentDate(-1));
-  nextDayButton.addEventListener("click", () => shiftCurrentDate(1));
+  datePicker.addEventListener("change", () => refresh(true));
+  prevDate.addEventListener("click", () => shiftDay(-1));
+  nextDate.addEventListener("click", () => shiftDay(1));
+  todayBtn.addEventListener("click", () => {
+    datePicker.value = toIsoDate(new Date());
+    refresh(true);
+  });
 
-  todayButton.addEventListener("click", () => {
-    const now = new Date();
-    datePicker.value = toIsoDate(now);
-    renderForDate(parseDateFromPicker(datePicker.value));
+  themeSwitch.addEventListener("click", () => {
+    const isOn = themeSwitch.getAttribute("aria-checked") === "true";
+    themeSwitch.setAttribute("aria-checked", String(!isOn));
+    document.body.classList.toggle("is-day", !isOn);
   });
 }
 

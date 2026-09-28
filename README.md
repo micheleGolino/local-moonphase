@@ -4,11 +4,14 @@ A local-first web app to visualize Moon phase and Earth phase for any date, desi
 
 ## Features
 
-- Moon phase and Earth phase visualized side by side
-- Date selector with quick navigation (`-1 day`, `+1 day`, `today`)
+- Swatch-inspired card UI: large Earth disc, small Moon disc, lunar surface backdrop
+- Photographic Moon and Earth rendered on canvas with an accurate, animated terminator
+- Countdown to the next "Earth new" (Full Moon) and full phase readout
+- Date selector with quick navigation (previous day, next day, today)
+- Day/night theme toggle
 - Default date is always the current day
 - Local calculations powered by an existing astronomy math library: `astronomy-engine`
-- Works fully in local mode once dependencies are installed
+- Respects `prefers-reduced-motion`
 
 ## Tech Stack
 
@@ -42,5 +45,8 @@ npm run preview
 
 ## Notes
 
-- This is a personal utility project and is not affiliated with Swatch.
-- Earth phase is represented as the complementary phase of the Moon phase.
+- This is a personal utility project and is not affiliated with Swatch/Omega.
+- Earth phase is the complementary phase of the Moon phase.
+- Phase math runs fully locally. The Moon/Earth photo textures and the lunar
+  background are loaded from Swatch's public CDN for visual fidelity, so the
+  imagery needs an internet connection; the phase calculation itself works offline.
